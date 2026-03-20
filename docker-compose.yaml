@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   mariadb:
     image: mariadb:latest
@@ -9,10 +8,18 @@ services:
     ports:
       - "3306:3306"
     volumes:
-
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-
       - mariadb_data:/var/lib/mysql
+
+  app:
+    build: .
+    container_name: Python-KMS
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mariadb
+    volumes:
+      - ./src:/app
 
 volumes:
   mariadb_data:
