@@ -19,7 +19,7 @@ services:
     depends_on:
       - mariadb
     volumes:
-      - ./src:/app
+      - .:/app
 
 volumes:
   mariadb_data:
