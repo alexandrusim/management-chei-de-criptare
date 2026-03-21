@@ -6,7 +6,7 @@ import time
 from sqlalchemy.exc import OperationalError
 
 MAX_RETRIES = 5
-RETRY_DELAY = 5  # secunde
+RETRY_DELAY = 5
 
 for attempt in range(MAX_RETRIES):
     try:
