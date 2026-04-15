@@ -23,6 +23,7 @@ class Algoritm(Base):
     chei = relationship("Cheie", back_populates="algoritm")
 
 
+
 class Fisier(Base):
     __tablename__ = 'Fisier'
     fisier_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -31,7 +32,14 @@ class Fisier(Base):
     dimensiune = Column(BigInteger)
     path = Column(String(255))
 
+
+    hash_original = Column(String(64), nullable=True)
+
+    cheie_utilizata_id = Column(Integer, ForeignKey('Cheie.cheie_id'), nullable=True)
+
     performante = relationship("Performanta", back_populates="fisier")
+
+    cheie_utilizata = relationship("Cheie")
 
 
 class Cheie(Base):

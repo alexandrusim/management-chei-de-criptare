@@ -23,11 +23,15 @@ class AlgoritmBase(BaseModel):
 class AlgoritmCreate(AlgoritmBase): pass
 class AlgoritmUpdate(AlgoritmBase): pass
 
+
+
 class FisierBase(BaseModel):
     nume: str
     extensie: Optional[str] = None
     dimensiune: Optional[int] = None
     path: Optional[str] = None
+    hash_original: Optional[str] = None
+    cheie_utilizata_id: Optional[int] = None
 
 class FisierCreate(FisierBase): pass
 class FisierUpdate(FisierBase): pass

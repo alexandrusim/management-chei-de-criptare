@@ -4,3 +4,5 @@ mariadb_data/
 __pycache__/
 *.pyc
 .idea/
+.venv
+./.venv

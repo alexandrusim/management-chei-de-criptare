@@ -5,7 +5,10 @@ from database import get_db
 from sql_models import Performanta, Algoritm, Framework, Fisier, Cheie
 from schemas import (AlgoritmCreate, AlgoritmUpdate, FrameworkCreate, FrameworkUpdate,
                      FisierCreate, FisierUpdate, CheieCreate, CheieUpdate, PerformantaCreate)
-
+import hashlib
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.backends import default_backend
 router = APIRouter()
 BASE_DIR = "files"
 
@@ -71,6 +74,152 @@ def criptare_cezar(nume_fisier: str, shift: int = 3, db: Session = Depends(get_d
     return {"status": "Succes Cezar", "fisier_output": cale_out, "timp_executie": durata}
 
 
+@router.post("/operatii/criptare-aes", tags=["criptare"],
+             summary="Cripteaza un fisier folosind AES-256-CBC (OpenSSL Wrapper)")
+def criptare_aes(fisier_id: int, db: Session = Depends(get_db)):
+    fisier_db = db.query(Fisier).filter(Fisier.fisier_id == fisier_id).first()
+    if not fisier_db:
+        raise HTTPException(status_code=404, detail="Fisierul nu exista in DB")
+
+    cale_in = fisier_db.path
+    if not os.path.exists(cale_in):
+        raise HTTPException(status_code=404, detail="Fisierul fizic nu a fost gasit pe disc")
+
+    cale_out = cale_in + ".enc"
+
+    algoritm_aes = db.query(Algoritm).filter(Algoritm.nume == "AES-256-CBC").first()
+    if not algoritm_aes:
+        algoritm_aes = Algoritm(nume="AES-256-CBC", tip="Simetric", dim_cheie=256)
+        db.add(algoritm_aes)
+        db.commit()
+
+    framework_openssl = db.query(Framework).filter(Framework.nume == "OpenSSL").first()
+    if not framework_openssl:
+        framework_openssl = Framework(nume="OpenSSL")
+        db.add(framework_openssl)
+        db.commit()
+
+    cheie_bytes = os.urandom(32)
+    iv = os.urandom(16)
+
+    cheie_db = Cheie(algoritm_id=algoritm_aes.algoritm_id, val_cheie=cheie_bytes.hex())
+    db.add(cheie_db)
+    db.commit()
+    db.refresh(cheie_db)
+
+    with open(cale_in, 'rb') as f:
+        date_clare = f.read()
+
+    hash_sha256 = hashlib.sha256(date_clare).hexdigest()
+
+    start_time = time.perf_counter()
+
+    padder = padding.PKCS7(128).padder()
+    date_padded = padder.update(date_clare) + padder.finalize()
+
+    cipher = Cipher(algorithms.AES(cheie_bytes), modes.CBC(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    date_criptate = encryptor.update(date_padded) + encryptor.finalize()
+
+    with open(cale_out, 'wb') as f:
+        f.write(iv + date_criptate)
+
+    durata = time.perf_counter() - start_time
+
+    fisier_db.hash_original = hash_sha256
+    fisier_db.cheie_utilizata_id = cheie_db.cheie_id
+    fisier_db.path = cale_out
+    db.commit()
+
+    dimensiune_mb = os.path.getsize(cale_out) / (1024 * 1024)
+    noua_perf = Performanta(
+        timp=round(durata, 6),
+        memorie=round(dimensiune_mb, 4),
+        tip_operatiune="Criptare AES-256",
+        algoritm_id=algoritm_aes.algoritm_id,
+        framework_id=framework_openssl.framework_id,
+        fisier_id=fisier_db.fisier_id
+    )
+    db.add(noua_perf)
+    db.commit()
+
+    return {
+        "status": "Succes",
+        "mesaj": "Fisier criptat cu AES-256 prin OpenSSL",
+        "hash_original": hash_sha256,
+        "timp_executie_secunde": round(durata, 6)
+    }
+
+
+@router.post("/operatii/decriptare-aes", tags=["decriptare"],
+             summary="Decripteaza un fisier AES-256-CBC si verifica integritatea (Hash)")
+def decriptare_aes(fisier_id: int, db: Session = Depends(get_db)):
+    fisier_db = db.query(Fisier).filter(Fisier.fisier_id == fisier_id).first()
+    if not fisier_db:
+        raise HTTPException(status_code=404, detail="Fisierul nu exista in DB")
+
+    if not fisier_db.cheie_utilizata_id:
+        raise HTTPException(status_code=400,
+                            detail="Acest fisier nu are o cheie asociata (nu pare a fi criptat in sistem)")
+
+    cale_in = fisier_db.path
+    if not os.path.exists(cale_in):
+        raise HTTPException(status_code=404, detail="Fisierul fizic criptat nu a fost gasit")
+
+    cale_out = cale_in.replace(".enc", ".dec")
+
+    cheie_db = db.query(Cheie).filter(Cheie.cheie_id == fisier_db.cheie_utilizata_id).first()
+    if not cheie_db:
+        raise HTTPException(status_code=404, detail="Cheia de decriptare nu a fost gasita")
+
+    cheie_bytes = bytes.fromhex(cheie_db.val_cheie)
+
+    with open(cale_in, 'rb') as f:
+        iv = f.read(16)
+        date_criptate = f.read()
+
+    start_time = time.perf_counter()
+
+    cipher = Cipher(algorithms.AES(cheie_bytes), modes.CBC(iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+
+    date_padded = decryptor.update(date_criptate) + decryptor.finalize()
+    unpadder = padding.PKCS7(128).unpadder()
+    date_clare = unpadder.update(date_padded) + unpadder.finalize()
+
+    durata = time.perf_counter() - start_time
+
+    with open(cale_out, 'wb') as f:
+        f.write(date_clare)
+
+    hash_curent = hashlib.sha256(date_clare).hexdigest()
+    integritate_ok = (hash_curent == fisier_db.hash_original)
+
+    algoritm_aes = db.query(Algoritm).filter(Algoritm.nume == "AES-256-CBC").first()
+    framework_openssl = db.query(Framework).filter(Framework.nume == "OpenSSL").first()
+
+    dimensiune_mb = os.path.getsize(cale_out) / (1024 * 1024)
+    noua_perf = Performanta(
+        timp=round(durata, 6),
+        memorie=round(dimensiune_mb, 4),
+        tip_operatiune="Decriptare AES-256",
+        algoritm_id=algoritm_aes.algoritm_id if algoritm_aes else None,
+        framework_id=framework_openssl.framework_id if framework_openssl else None,
+        fisier_id=fisier_db.fisier_id
+    )
+    db.add(noua_perf)
+
+
+    db.commit()
+
+    return {
+        "status": "Succes",
+        "fisier_rezultat": cale_out,
+        "integritate_verificata": integritate_ok,
+        "hash_original_db": fisier_db.hash_original,
+        "hash_calculat_acum": hash_curent,
+        "timp_executie_secunde": round(durata, 6)
+    }
 # ALGORITM
 @router.post("/algoritmi", tags=["Algoritm"], summary="Post in tabela algoritm")
 def create_algoritm(alg: AlgoritmCreate, db: Session = Depends(get_db)):
