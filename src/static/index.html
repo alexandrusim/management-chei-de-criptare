@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Management Chei</title>
+    <style>
+        :root {
+            --bg-base: #121212;
+            --bg-surface: #1e1e1e;
+            --bg-surface-hover: #2a2a2a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888888;
+            --accent-primary: #007acc;
+            --accent-hover: #005f9e;
+            --border: #333333;
+            --success: #4caf50;
+            --error: #f44336;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 30px 20px;
+            line-height: 1.6;
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 300;
+            margin-bottom: 30px;
+            color: #ffffff;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            padding: 25px;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 300px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            font-size: 1.1em;
+            color: #ffffff;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            background: var(--bg-surface-hover);
+            border-radius: 6px;
+            margin-bottom: 10px;
+            padding: 12px 15px;
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        .file-info { font-size: 0.95em; }
+        .file-path { color: var(--text-secondary); font-size: 0.85em; margin-top: 4px; }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        input[type="text"], input[type="number"] {
+            background: var(--bg-base);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 10px;
+            width: calc(100% - 22px);
+            margin-bottom: 15px;
+            font-family: inherit;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        button {
+            background: var(--accent-primary);
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 500;
+            margin-bottom: 10px;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        button:hover { background: var(--accent-hover); }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--accent-primary);
+            color: #fff;
+        }
+
+        .console-output {
+            margin-top: 10px;
+            padding: 15px;
+            background: var(--bg-base);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85em;
+            min-height: 80px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .status-success { color: var(--success); }
+        .status-error { color: var(--error); }
+        .status-info { color: var(--text-secondary); }
+
+        /* Stil special pentru boxa de chei RSA */
+        pre {
+            background: var(--bg-base);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            color: #c586c0;
+            font-size: 0.85em;
+            border: 1px solid var(--border);
+            margin-top: 8px;
+        }
+        details { margin-top: 5px; }
+        summary { cursor: pointer; color: var(--accent-primary); font-size: 0.85em; font-weight: 500;}
+        summary:hover { color: var(--accent-hover); }
+    </style>
+</head>
+<body>
+
+    <h1>Sistem Management Chei de Criptare</h1>
+
+    <div class="container">
+        <div class="panel">
+            <h2>Fișiere în Sistem</h2>
+            <div style="margin-bottom: 20px;">
+                <label>Adaugă fișier (trebuie să existe în folderul 'files'):</label>
+                <input type="text" id="inputNumeFisier" placeholder="ex: secret.txt">
+                <button onclick="adaugaFisierNou()">Înregistrează Fișier</button>
+            </div>
+            <button class="btn-outline" onclick="incarcaFisiere()">↻ Actualizează Lista</button>
+            <ul id="lista-fisiere" style="margin-top: 15px;">
+                <li>Se încarcă datele...</li>
+            </ul>
+        </div>
+
+        <div class="panel">
+            <h2>Operațiuni Criptografice</h2>
+            <label>ID Fișier Țintă:</label>
+            <input type="number" id="inputIdFisier" placeholder="ex: 1" min="1">
+            <div style="margin-bottom: 20px;">
+                <button onclick="executaOperatiune('/operatii/criptare-aes')">Criptare AES-256-CBC</button>
+                <button class="btn-outline" onclick="executaOperatiune('/operatii/decriptare-aes')">Decriptare AES-256-CBC</button>
+            </div>
+            <div>
+                <button onclick="executaOperatiune('/operatii/criptare-rsa')">Criptare RSA-2048</button>
+                <button class="btn-outline" onclick="executaOperatiune('/operatii/decriptare-rsa')">Decriptare RSA-2048</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" style="margin-top: 20px;">
+        <div class="panel" style="width: 100%;">
+            <h2>Gestiune Chei (Debug API)</h2>
+            <button class="btn-outline" onclick="incarcaChei()" style="width: auto;">Extrage Chei din DB</button>
+            <ul id="lista-chei" style="margin-top: 15px; max-height: 300px; overflow-y: auto;">
+                <li class="status-info">Apasă butonul de mai sus pentru a vizualiza cheile stocate.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container" style="margin-top: 20px;">
+        <div class="panel" style="width: 100%;">
+            <h2>Jurnal Sistem</h2>
+            <div id="console" class="console-output">
+                <span class="status-info">Sistem inițializat. Gata de utilizare.</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function logMessage(msg, type='info') {
+            const consoleDiv = document.getElementById('console');
+            const time = new Date().toLocaleTimeString();
+            consoleDiv.innerHTML += `<br><span class="status-${type}">[${time}] ${msg}</span>`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        async function incarcaFisiere() {
+            const lista = document.getElementById('lista-fisiere');
+            lista.innerHTML = '<li>Căutare fișiere...</li>';
+            try {
+                const response = await fetch('/fisiere');
+                const fisiere = await response.json();
+                lista.innerHTML = '';
+                if(fisiere.length === 0) {
+                    lista.innerHTML = '<li class="status-info">Niciun fișier înregistrat.</li>';
+                    return;
+                }
+                fisiere.forEach(f => {
+                    lista.innerHTML += `
+                        <li>
+                            <div class="file-info">ID: <strong>${f.fisier_id}</strong> | Nume: ${f.nume}</div>
+                            <div class="file-path">Path: ${f.path || 'N/A'}</div>
+                        </li>
+                    `;
+                });
+                logMessage('Lista de fișiere a fost actualizată.', 'success');
+            } catch (error) {
+                lista.innerHTML = '<li class="status-error">Eroare conexiune DB.</li>';
+                logMessage('A eșuat extragerea fișierelor.', 'error');
+            }
+        }
+
+        // NOU: Functia pentru incarcarea cheilor
+        async function incarcaChei() {
+            const lista = document.getElementById('lista-chei');
+            lista.innerHTML = '<li>Se descarcă cheile...</li>';
+            try {
+                const response = await fetch('/chei');
+                const chei = await response.json();
+                lista.innerHTML = '';
+                if(chei.length === 0) {
+                    lista.innerHTML = '<li class="status-info">Nicio cheie generată până acum.</li>';
+                    return;
+                }
+                chei.forEach(c => {
+                    lista.innerHTML += `
+                        <li>
+                            <div class="file-info">ID Cheie: <strong>${c.cheie_id}</strong> | Algoritm ID: ${c.algoritm_id} | Status: ${c.status}</div>
+                            <div class="file-path">Data: ${new Date(c.data_creare).toLocaleString()}</div>
+                            <details>
+                                <summary>Afișează valoarea cheii (Hex/PEM)</summary>
+                                <pre>${c.val_cheie}</pre>
+                            </details>
+                        </li>
+                    `;
+                });
+                logMessage('Modul Debug: Cheile au fost extrase cu succes.', 'success');
+            } catch (error) {
+                lista.innerHTML = '<li class="status-error">Eroare conexiune DB.</li>';
+                logMessage('A eșuat extragerea cheilor din baza de date.', 'error');
+            }
+        }
+
+        async function adaugaFisierNou() {
+            const numeFisier = document.getElementById('inputNumeFisier').value;
+            if(!numeFisier) {
+                logMessage('Trebuie să introduci numele fișierului.', 'error');
+                return;
+            }
+            const extensie = numeFisier.includes('.') ? numeFisier.substring(numeFisier.lastIndexOf('.')) : '';
+            const payload = { nume: numeFisier, extensie: extensie, dimensiune: 1024, path: "files/" + numeFisier };
+            logMessage(`Se înregistrează ${numeFisier}...`, 'info');
+            try {
+                const response = await fetch('/fisiere', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    logMessage('Fișier adăugat cu succes.', 'success');
+                    document.getElementById('inputNumeFisier').value = '';
+                    incarcaFisiere(); 
+                } else {
+                    const data = await response.json();
+                    logMessage(`Eroare: ${data.detail || 'Nu s-a putut adăuga.'}`, 'error');
+                }
+            } catch (error) {
+                logMessage('Eroare critică la adăugarea fișierului.', 'error');
+            }
+        }
+
+        async function executaOperatiune(ruta) {
+            const idFisier = document.getElementById('inputIdFisier').value;
+            if(!idFisier) {
+                logMessage('Specifică un ID de fișier pentru operațiune.', 'error');
+                return;
+            }
+            logMessage(`Executare operațiune pe fișierul ID=${idFisier}...`, 'info');
+            try {
+                const response = await fetch(`${ruta}?fisier_id=${idFisier}`, { method: 'POST' });
+                const data = await response.json();
+                if (response.ok) {
+                    logMessage(`Succes: ${data.mesaj || data.status || 'Operațiune încheiată'}`, 'success');
+                    incarcaFisiere(); 
+                    // Daca avem panoul de chei deschis, il actualizam automat si pe el
+                    if(document.getElementById('lista-chei').innerHTML.includes('ID Cheie')) {
+                        incarcaChei();
+                    }
+                } else {
+                    logMessage(`Refuzat: ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                logMessage('Eroare de comunicare cu API-ul.', 'error');
+            }
+        }
+
+        window.onload = incarcaFisiere;
+    </script>
+</body>
+</html>

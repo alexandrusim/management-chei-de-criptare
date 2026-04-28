@@ -83,6 +83,9 @@ def criptare_aes(fisier_id: int, db: Session = Depends(get_db)):
     if not fisier_db:
         raise HTTPException(status_code=404, detail="Fisierul nu exista in DB")
 
+    if fisier_db.cheie_utilizata_id is not None:
+        raise HTTPException(status_code=400, detail="Fisierul este deja criptat! Decripteaza-l mai intai.")
+
     cale_in = fisier_db.path
     if not os.path.exists(cale_in):
         raise HTTPException(status_code=404, detail="Fisierul fizic nu a fost gasit")
@@ -187,6 +190,9 @@ def decriptare_aes(fisier_id: int, db: Session = Depends(get_db)):
 
     hash_curent = hashlib.sha256(date_clare).hexdigest()
     integritate_ok = (hash_curent == fisier_db.hash_original)
+
+    fisier_db.path = cale_out
+    fisier_db.cheie_utilizata_id = None
 
     algoritm_aes = db.query(Algoritm).filter(Algoritm.nume == "AES-256-CBC").first()
     framework_openssl = db.query(Framework).filter(Framework.nume == "OpenSSL").first()
@@ -322,6 +328,9 @@ def decriptare_rsa(fisier_id: int, db: Session = Depends(get_db)):
 
     with open(cale_out, 'wb') as f:
         f.write(date_clare)
+
+    fisier_db.path = cale_out
+    fisier_db.cheie_utilizata_id = None
 
     framework_openssl = db.query(Framework).filter(Framework.nume == "OpenSSL").first()
     noua_perf = Performanta(
@@ -501,3 +510,34 @@ def delete_performanta(id: int, db: Session = Depends(get_db)):
     db.delete(db_perf)
     db.commit()
     return {"status": "Sters", "id": id}
+
+
+@router.get("/fisiere/{fisier_id}/status", tags=["Fisier"], summary="aaaaaaaaaaa")
+def get_status_fisier(fisier_id: int, db: Session = Depends(get_db)):
+    fisier_db = db.query(Fisier).filter(Fisier.fisier_id == fisier_id).first()
+    if not fisier_db:
+        raise HTTPException(status_code=404, detail="Fisierul nu exista")
+
+    cale_fisier = fisier_db.path or ""
+
+    # 1. Dedus din extensie și cheie
+    status_calculat = "Clar / Decriptat"
+    if fisier_db.cheie_utilizata_id is not None or cale_fisier.endswith(".caesar"):
+        if cale_fisier.endswith(".enc") or cale_fisier.endswith(".rsa_enc") or cale_fisier.endswith(".caesar"):
+            status_calculat = "Criptat"
+
+    ultima_perf = db.query(Performanta) \
+        .filter(Performanta.fisier_id == fisier_id) \
+        .order_by(Performanta.data.desc()) \
+        .first()
+
+    ultima_operatiune = ultima_perf.tip_operatiune if ultima_perf else "Fara operatiuni logate"
+
+    return {
+        "fisier_id": fisier_db.fisier_id,
+        "nume_fisier": fisier_db.nume,
+        "stare_curenta": status_calculat,
+        "ultima_operatiune_logata": ultima_operatiune,
+        "cale_actuala": cale_fisier,
+        "are_hash_salvat": fisier_db.hash_original is not None
+    }

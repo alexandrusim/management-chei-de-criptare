@@ -47,7 +47,7 @@ class Cheie(Base):
     cheie_id = Column(Integer, primary_key=True, autoincrement=True)
     algoritm_id = Column(Integer, ForeignKey('Algoritm.algoritm_id'), nullable=False)
     status = Column(String(20), default="Activ")
-    val_cheie = Column(String(500))
+    val_cheie = Column(String(2048))
     data_creare = Column(DateTime, default=datetime.utcnow)
 
     algoritm = relationship("Algoritm", back_populates="chei")
