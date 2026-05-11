@@ -12,6 +12,7 @@ RETRY_DELAY = 5
 
 for attempt in range(MAX_RETRIES):
     try:
+
         sql_models.Base.metadata.create_all(bind=engine)
         break
     except OperationalError as e:
@@ -23,10 +24,9 @@ app = FastAPI(title="Sistem management chei - Proiect SI")
 
 app.include_router(routes.router)
 
-# Montam folderul static pentru a servi HTML/CSS
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Ruta de baza (frontend-ul)
+
 @app.get("/", tags=["UI"], summary="Interfata Grafica")
 def serve_ui():
     return FileResponse("static/index.html")

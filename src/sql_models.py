@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, BigInteger
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, BigInteger, Text
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 
@@ -9,6 +9,7 @@ class Framework(Base):
     __tablename__ = 'Framework'
     framework_id = Column(Integer, primary_key=True, autoincrement=True)
     nume = Column(String(100), nullable=False)
+
     performante = relationship("Performanta", back_populates="framework")
 
 
@@ -23,7 +24,6 @@ class Algoritm(Base):
     chei = relationship("Cheie", back_populates="algoritm")
 
 
-
 class Fisier(Base):
     __tablename__ = 'Fisier'
     fisier_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -32,13 +32,10 @@ class Fisier(Base):
     dimensiune = Column(BigInteger)
     path = Column(String(255))
 
-
     hash_original = Column(String(64), nullable=True)
-
     cheie_utilizata_id = Column(Integer, ForeignKey('Cheie.cheie_id'), nullable=True)
 
     performante = relationship("Performanta", back_populates="fisier")
-
     cheie_utilizata = relationship("Cheie")
 
 
@@ -47,7 +44,7 @@ class Cheie(Base):
     cheie_id = Column(Integer, primary_key=True, autoincrement=True)
     algoritm_id = Column(Integer, ForeignKey('Algoritm.algoritm_id'), nullable=False)
     status = Column(String(20), default="Activ")
-    val_cheie = Column(String(2048))
+    val_cheie = Column(Text)
     data_creare = Column(DateTime, default=datetime.utcnow)
 
     algoritm = relationship("Algoritm", back_populates="chei")
