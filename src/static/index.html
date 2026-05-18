@@ -76,7 +76,7 @@
                 <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)">
             </div>
 
-            <button class="btn-outline" onclick="incarcaFisiere()">↻ Actualizeaza Lista</button>
+            <button class="btn-outline" onclick="incarcaFisiere()">Actualizeaza Lista</button>
             <ul id="lista-fisiere" style="margin-top: 15px;">
                 <li>Se incarca datele...</li>
             </ul>
@@ -112,6 +112,11 @@
     <div class="container" style="margin-top: 20px;">
         <div class="panel" style="width: 100%;">
             <h2>Analiza Performanta (Ultimele 10 Operatiuni)</h2>
+
+            <div id="statisticiPerformanta" style="margin-bottom: 15px; text-align: center; font-size: 0.95em; background: var(--bg-base); padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
+                <span class="status-info">Asteptare date pentru statistici...</span>
+            </div>
+
             <canvas id="graficPerformanta" height="80"></canvas>
         </div>
     </div>
@@ -192,7 +197,7 @@
                                 <div class="file-info">ID: <strong>${f.fisier_id}</strong> | Nume: ${f.nume}</div>
                                 <div class="file-path">Path: ${f.path || 'N/A'}</div>
                             </div>
-                            <button class="btn-delete" onclick="event.stopPropagation(); stergeFisier(${f.fisier_id})">🗑️</button>
+                            <button class="btn-delete" onclick="event.stopPropagation(); stergeFisier(${f.fisier_id})">Sterge</button>
                         </li>
                     `;
                 });
@@ -240,7 +245,7 @@
                                 <div class="file-info">ID Cheie: <strong>${c.cheie_id}</strong> | Algoritm: ${c.algoritm_id}</div>
                                 <details><summary>Valoare cheie</summary><pre>${c.val_cheie}</pre></details>
                             </div>
-                            <button class="btn-delete" onclick="stergeCheie(${c.cheie_id})">🗑️</button>
+                            <button class="btn-delete" onclick="stergeCheie(${c.cheie_id})">Sterge</button>
                         </li>
                     `;
                 });
@@ -302,11 +307,24 @@
                 if (date.length === 0) return;
 
                 const dateValide = date.filter(d => d.fisier_id !== null);
-
                 const ultimeleDate = dateValide.slice(-10);
 
-                const labels = ultimeleDate.map(d => `${d.tip_operatiune} (Fisier ID:${d.fisier_id})`);
-                const timpi = ultimeleDate.map(d => d.timp * 1000);
+                const labels = ultimeleDate.map(d => `${d.tip_operatiune} (ID:${d.fisier_id})`);
+
+                const timpTotal = ultimeleDate.map(d => d.timp * 1000);
+
+                const timpPerOctet = ultimeleDate.map(d => {
+                    const octeti = d.memorie || 1;
+                    return ((d.timp * 1000) / octeti).toFixed(4);
+                });
+
+                const medieTimp = (timpTotal.reduce((a, b) => a + b, 0) / timpTotal.length).toFixed(2);
+                const medieTimpOctet = (timpPerOctet.reduce((a, b) => a + parseFloat(b), 0) / timpPerOctet.length).toFixed(2);
+
+                document.getElementById('statisticiPerformanta').innerHTML = `
+                    <span style="color: #007acc; margin-right: 30px;">Medie Timp Total: <strong>${medieTimp} ms</strong></span>
+                    <span style="color: #16a085;">Medie Timp / Octet: <strong>${medieTimpOctet} ms/B</strong></span>
+                `;
 
                 if (chartPerformanta) {
                     chartPerformanta.destroy();
@@ -318,24 +336,46 @@
                 Chart.defaults.borderColor = '#333333';
 
                 chartPerformanta = new Chart(ctx, {
-                    type: 'bar',
                     data: {
                         labels: labels,
-                        datasets: [{
-                            label: 'Timp de executie (milisecunde)',
-                            data: timpi,
-                            backgroundColor: 'rgba(0, 122, 204, 0.6)',
-                            borderColor: 'rgba(0, 122, 204, 1)',
-                            borderWidth: 1,
-                            borderRadius: 4
-                        }]
+                        datasets: [
+                            {
+                                type: 'bar',
+                                label: 'Timp Total Algoritm (ms)',
+                                data: timpTotal,
+                                backgroundColor: 'rgba(0, 122, 204, 0.6)',
+                                borderColor: 'rgba(0, 122, 204, 1)',
+                                borderWidth: 1,
+                                borderRadius: 4,
+                                yAxisID: 'y'
+                            },
+                            {
+                                type: 'line',
+                                label: 'Timp / Octet Framework (ms/B)',
+                                data: timpPerOctet,
+                                backgroundColor: 'rgba(22, 160, 133, 1)',
+                                borderColor: 'rgba(22, 160, 133, 1)',
+                                borderWidth: 2,
+                                pointRadius: 4,
+                                yAxisID: 'y1'
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
                         scales: {
                             y: {
-                                beginAtZero: true,
-                                title: { display: true, text: 'Milisecunde (ms)', color: '#e0e0e0' }
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: { display: true, text: 'Timp Total (ms)', color: '#007acc' }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: { display: true, text: 'Timp / Octet (ms/B)', color: '#16a085' },
+                                grid: { drawOnChartArea: false }
                             }
                         },
                         plugins: {
